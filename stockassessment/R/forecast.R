@@ -15,7 +15,7 @@ rmvnorm <- function(n = 1, mu, Sigma){
   if(any(idx)){
     L[idx,idx] <- chol(Sigma[idx,idx])
   }
-  X <- matrix(rnorm(p * n), n)
+  X <- matrix(rnorm(p * n), n)  
   X <- drop(mu) + t(X%*%L)
   if(n == 1){
     drop(X)
