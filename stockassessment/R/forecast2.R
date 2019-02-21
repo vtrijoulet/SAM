@@ -68,6 +68,7 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
     if (sum(!is.na(Blim))==0 | missing(Fmsy) | missing(Fscenario) | missing(Flow)) stop("When MSYBtrig is specified, need to specify Blim, Fmsy, Fscenario and Flow")
   }
 
+  # To allow the if statement l.269 => if(!is.na(MSYBtrig[i+1]) & !is.na(Blim[i+1])...)
   if(missing(MSYBtrig)) MSYBtrig<-rep(NA,length(fval))
   if(missing(Blim)) Blim<-rep(NA,length(fval))
   
