@@ -1,0 +1,417 @@
+##' rmvnorm helper function to draw multivariate normal samples
+##' @param n the number of samples.
+##' @param mu the mean vector.
+##' @param Sigma a positive-definite symmetric matrix specifying the covariance matrix.
+##' @details Generates samples via the Cholesky decomposition, which is less platform dependent than eigenvalue decomposition.
+##' @return If n = 1 a vector of the same length as mu, otherwise an n by length(mu) matrix with one sample in each row.
+##' @export
+rmvnorm <- function(n = 1, mu, Sigma){ 
+  p <- length(mu)
+  if(!all(dim(Sigma) == c(p, p))){
+    stop("incompatible arguments")
+  }
+  idx <- diag(Sigma) > .Machine$double.xmin 
+  L <- matrix(0,p,p)
+  if(any(idx)){
+    L[idx,idx] <- chol(Sigma[idx,idx])
+  }
+  X <- matrix(rnorm(p * n), n)  
+  X <- drop(mu) + t(X%*%L)
+  if(n == 1){
+    drop(X)
+  }else{
+    t(X)
+  }
+}
+
+##' forecast function to do shortterm
+##' @param fit an assessment object of type sam, as returned from the function sam.fit
+##' @param fscale a vector of f-scales. See details.  
+##' @param catchval a vector of target catches. See details.   
+##' @param fval a vector of target f values. See details.  
+##' @param nosim number of simulations default is 1000
+##' @param year.base starting year default last year in assessment. Currently it is only supported to use last assessment year or the year before  
+##' @param ave.years vector of years to average for weights, maturity, M and such  
+##' @param rec.years vector of years to use to resample recruitment from
+##' @param label optional label to appear in short table
+##' @param overwriteSelYears if a vector of years is specified, then the average selectivity of those years is used (not recommended)
+##' @param deterministic option to turn all process noise off (not recommended, as it will likely cause bias)
+##' @param cf.cv.keep.cv exotic option 
+##' @param cf.cv.keep.fv exotic option
+##' @param cf.keep.fv.offset exotic option
+##' @param estimate the summary function used (typically mean or median) 
+##' @details There are three ways to specify a scenario. If e.g. four F values are specified (e.g. fval=c(.1,.2,.3,4)), then the first value is used in the last assessment year (base.year), and the three following in the three following years. Alternatively F's can be specified by a scale, or a target catch. Only one option can be used per year. So for instance to set a catch in the first year and an F-scale in the following one would write catchval=c(10000,NA,NA,NA), fscale=c(NA,1,1,1). The length of the vector specifies how many years forward the scenarios run. 
+##' @return an object of type samforecast
+##' @importFrom stats median uniroot quantile
+##' @importFrom Matrix bdiag
+##' @export
+forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, util=matrix(1,nrow=sum(fit$data$fleetTypes==0), ncol=length(MSYBtrig)), nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, cf.cv.keep.cv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.cv.keep.fv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.keep.fv.offset=matrix(0, ncol=sum(fit$data$fleetTypes==0), nrow=length(catchval)), estimate=median){
+
+  idxN <- 1:nrow(fit$rep$nvar)
+    
+  idxF <- 1:nrow(fit$rep$fvar)+nrow(fit$rep$nvar)
+
+  catchFleets <- which(fit$data$fleetType==0)
+  noCatchFleets <- length(catchFleets)  
+  idxFbyFleet <- apply(fit$conf$keyLogFsta[catchFleets,,drop=FALSE], 1, function(x)unique(x[x>-.5])+nrow(fit$rep$nvar)+1) 
+    
+  resample <- function(x, ...){
+    if(deterministic){
+      ret <- mean(x)
+    }else{
+      ret <- x[sample.int(length(x), ...)]
+    }
+    return(ret)
+  }
+    
+   if (!missing(MSYBtrig)){
+    if (sum(!is.na(Blim))==0 | missing(Fmsy) | missing(Fscenario) | missing(Flow)) stop("When MSYBtrig is specified, need to specify Blim, Fmsy, Fscenario and Flow")
+  }
+
+  if(missing(MSYBtrig)) MSYBtrig<-rep(NA,length(fval))
+  if(missing(Blim)) Blim<-rep(NA,length(fval))
+  
+  
+  if(missing(fscale)&missing(fval)&missing(catchval))stop("No scenario is specified")
+  if(missing(fscale)&!missing(fval))fscale<-rep(NA,length(fval))
+  if(missing(fscale)&!missing(catchval))fscale<-rep(NA,length(catchval))
+  if(missing(fval)&!missing(fscale))fval<-rep(NA,length(fscale))
+  if(missing(fval)&!missing(catchval))fval<-rep(NA,length(catchval))
+  if(missing(catchval)&!missing(fval))catchval<-rep(NA,length(fval))
+  if(missing(catchval)&!missing(fscale))catchval<-rep(NA,length(fscale))
+  
+        
+  if(!all(rowSums(!is.na(cbind(fscale, catchval, fval, MSYBtrig)))==1)){
+    stop("For each forecast year exactly one of fscale, catchval, fval or MSYBtrig must be specified (all others must be set to NA)")
+  }
+  
+  if(sum(rowSums(!is.na(cbind(fval, MSYBtrig)))>1)>0) stop("fval and MSYBtrig cannot be specified in a same year")
+  
+  if(!missing(Fscenario)) if (!Fscenario%in%1:5) stop("Fscenario does not exist")
+
+
+  if(!is.null(overwriteSelYears)){
+    fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)  
+    Ftab <- faytable(fit)
+    fixedsel <- colMeans(Ftab[as.integer(rownames(Ftab))%in%overwriteSelYears,,drop=FALSE])
+    fixedsel <- fixedsel/mean(fixedsel[fromto[1]:fromto[2]])
+  }
+    
+  getF <- function(x, fleet=which(fit$data$fleetTypes==0)){
+    getfleet <- function(f){
+      idx <- fit$conf$keyLogFsta[f,]+2    
+      ret <- c(NA,exp(x[idxF]))[idx]
+      ret[is.na(ret)] <- 0
+      ret
+    }
+    FF <- lapply(fleet,getfleet)
+    ret <- Reduce("+",FF) 
+    if(!is.null(overwriteSelYears)){
+      fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)    
+      thisfbar<-mean(ret[fromto[1]:fromto[2]])
+      ret<-fixedsel*thisfbar
+      FF[]<-NA
+    }
+    attr(ret,"byFleet") <- do.call(cbind,FF)
+    ret
+  }
+
+  fbar<-function(x){
+    fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)  
+    mean(getF(x)[fromto[1]:fromto[2]])
+  }    
+    
+  getN <- function(x){
+    idx <- fit$conf$keyLogFsta[1,]+1
+    nsize <- length(idx)
+    ret <- exp(x[1:nsize])
+    ret
+  }
+
+  getProcessVar <- function(fit, set.rec.var.zero=TRUE){
+    cov <- bdiag(fit$rep[c("nvar","fvar")])
+    if(set.rec.var.zero){
+      cov[1,1] <- 0
+    }
+    as.matrix(cov)
+  }
+    
+  step <- function(x, nm, recpool, scale, inyear=FALSE){
+    F <- getF(x)
+    N <- getN(x)
+    if(!inyear){
+      Z <- F+nm
+      n <- length(N)
+      N <- c(resample(recpool,1),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+    }
+    xx <- rep(NA,length=length(x))
+    xx[idxN] <- log(N)
+    xx[idxF] <- x[idxF]+log(scale)
+    return(xx)
+  }
+
+  scaleF <- function(x, scale){
+    x[idxF] <- x[idxF]+log(scale)
+    return(x)
+  }
+    
+  scaleFbyFleet <- function(x, scale){
+    f <- function(i){
+      x[idxFbyFleet[[i]]] <<- x[idxFbyFleet[[i]]]+log(scale[i])
+    }
+    invisible(sapply(1:noCatchFleets,f))
+    return(x)
+  }
+    
+  sel<-function(x){
+    getF(x)/fbar(x)
+  }
+
+  catch <- function(x, nm, cw){
+    F <- getF(x)
+    FF <- attr(F,"byFleet")
+    Z <- F+nm
+    N <- getN(x)
+    C <- FF/Z*(1-exp(-Z))*N
+    TCW <- sum(C*cw)
+    attr(TCW, "byFleet") <- colSums(C*cw)
+    return(TCW)
+  }
+
+  ssb <- function(x, nm, sw, mo, pm, pf){
+    F <- getF(x)
+    FF <- attr(F,"byFleet")
+    ZZ <- pm*nm+rowSums(pf*FF)
+    N <- getN(x)*exp(-ZZ)
+    return(sum(N*mo*sw))
+  }
+
+  rectab<-rectable(fit)
+  recpool<-rectab[rownames(rectab)%in%rec.years,1]
+
+  # Get final state
+  if(year.base==max(fit$data$years)){
+    est <- fit$sdrep$estY
+    cov <- fit$sdrep$covY
+  }
+  if(year.base==(max(fit$data$years)-1)){  
+    est <- fit$sdrep$estYm1
+    cov <- fit$sdrep$covYm1
+  }
+  if(year.base<(max(fit$data$years)-1)){
+    stop("State not saved, so cannot proceed from this year")
+  }
+  if(deterministic){
+    cov<-cov*0
+  }
+  sim <- rmvnorm(nosim, mu=est, Sigma=cov)
+    
+  doAve <- function(x){
+    if(length(dim(x))==2){
+      ret <- colMeans(x[rownames(x)%in%ave.years,,drop=FALSE])
+    }
+    if(length(dim(x))==3){
+      ret <- apply(x[rownames(x)%in%ave.years,,,drop=FALSE],c(2,3),mean)
+    }
+    ret
+  }
+
+  ave.sw <- doAve(fit$data$stockMeanWeight)
+  ave.cw <- doAve(fit$data$catchMeanWeight)
+  ave.mo <- doAve(fit$data$propMat)
+  ave.nm <- doAve(fit$data$natMor)
+  ave.lf <- doAve(fit$data$landFrac)
+  ave.lw <- doAve(fit$data$landMeanWeight)
+  ave.pm <- doAve(fit$data$propM)
+  ave.pf <- doAve(fit$data$propF)
+  getThisOrAve <- function(x,y, ave){
+    if(y %in% rownames(x)){
+      if(length(dim(x))==2){  
+        ret <- x[which(rownames(x)==y),]
+      }else{
+        ret <- x[which(rownames(x)==y),,]
+      }
+    }else{
+      ret <- ave
+    }
+    ret
+  }
+  procVar<-getProcessVar(fit)  
+  simlist<-list()
+  for(i in 0:(length(fscale)-1)){ ########## For each forecast year ##############
+    y<-year.base+i
+    
+    sw<-getThisOrAve(fit$data$stockMeanWeight, y, ave.sw)
+    cw<-getThisOrAve(fit$data$catchMeanWeight, y, ave.cw)
+    mo<-getThisOrAve(fit$data$propMat, y, ave.mo)
+    nm<-getThisOrAve(fit$data$natMor, y, ave.nm)
+    lf<-getThisOrAve(fit$data$landFrac, y, ave.lf)    
+    lw<-getThisOrAve(fit$data$landMeanWeight, y, ave.lw)
+    pm<-getThisOrAve(fit$data$propM, y, ave.pm)
+    pf<-getThisOrAve(fit$data$propF, y, ave.pf)
+
+    sim <- t(apply(sim, 1, function(s)step(s, nm=nm, recpool=recpool, scale=1, inyear=(i==0))))
+    if(i!=0){
+      if(deterministic)procVar<-procVar*0  
+      sim <- sim + rmvnorm(nosim, mu=rep(0,nrow(procVar)), Sigma=procVar)
+    }
+    
+    if(!is.na(fscale[i+1])){
+      sim<-t(apply(sim, 1, scaleF, scale=fscale[i+1]))    
+    }
+
+    if(!is.na(fval[i+1]) & is.na(MSYBtrig[i+1])){
+      curfbar<-estimate(apply(sim, 1, fbar))
+      adj<-fval[i+1]/curfbar
+      sim<-t(apply(sim, 1, scaleF, scale=adj))    
+    }
+
+    if(!is.na(MSYBtrig[i+1]) & !is.na(Blim[i+1]) & !missing(Fmsy) & !missing(Fscenario) & !missing(Flow)){
+      simtmp<-sim
+      funk<-function(k){
+        curfbar<-fbar(sim[k,])
+        thisssb <- simlist[[i]]$ssb[k]
+        ## general options for all Fscenarios
+        
+        if (thisssb>=MSYBtrig[i+1]){
+          adj<-Fmsy/curfbar # F=Fmsy if ssb >= MSYBtrig
+        } else {
+         if (thisssb<MSYBtrig[i+1] & thisssb>=Blim[i+1]){
+           if (Fscenario==5){
+             slope <- (Fmsy-Flow)/(MSYBtrig[i+1]-Blim[i+1])
+             f <- slope*(thisssb-Blim[i+1])+Flow # F on slope between MSYBtrig and Blim if Blim<= ssb < MSYBtrig
+             adj<-f/curfbar
+           } else {
+             f <-Fmsy*thisssb/MSYBtrig[i+1] # F on slope to origin if Blim<= ssb < MSYBtrig
+             adj<-f/curfbar
+           }
+         } else { # ssb<Blim
+           ## Options for different Fscenarios
+           if (Fscenario==1) adj<-1.0e-15 # F=0 (MSY approach)
+           if (Fscenario==2) {
+             f <-Fmsy*thisssb/MSYBtrig[i+1] # F on slope to origin
+             adj<-f/curfbar
+            }
+            if (Fscenario==3 | Fscenario==5) adj<-Flow/curfbar # F cst at low value
+            if (Fscenario==4) {
+              Blow <- Flow*MSYBtrig[i+1]/Fmsy
+              if (thisssb<Blow){
+                adj<-Flow/curfbar # F cst at low value if ssb low
+              } else {
+                f <-Fmsy*thisssb/MSYBtrig[i+1] # F on slope to origin if ssb>=Blow
+                adj<-f/curfbar
+              }
+            }
+          }
+        }
+        thissim<-scaleF(sim[k,], scale=adj)
+        simtmp[k,]<<-scaleFbyFleet(thissim, scale=util[,i+1])
+      }
+      dd <- sapply(1:nrow(sim),funk)
+      sim <- simtmp
+    }
+    
+    
+    if(!is.na(catchval[i+1])){
+      simtmp<-NA
+      fun<-function(s){
+        simtmp<<-t(apply(sim, 1, scaleF, scale=s))      
+        simcat<-apply(simtmp, 1, catch, nm=nm, cw=cw)
+        return(catchval[i+1]-estimate(simcat))
+      }
+      ff <- uniroot(fun, c(0,100))$root
+      sim <- simtmp
+    }
+
+    if(any(!is.na(cf.cv.keep.cv[i+1,]))){
+      cfcv <- cf.cv.keep.cv[i+1,]  
+      cf <- cfcv[1:noCatchFleets]
+      cv <- cfcv[1:noCatchFleets+noCatchFleets]
+      cfcvtcv<-c(cfcv,catchval[i+1])
+      ii <- which(apply(rbind(cv,cf),2,function(x)any(!is.na(x))))
+      theta <- rep(1,length(ii)+1)
+      if(length(theta)>noCatchFleets)stop("Over-specified in cf.cv.keep.cv")
+      lsfun <- function(th){
+        s <- rep(NA,noCatchFleets)
+        s[ii] <- th[1:length(ii)]
+        s[-ii] <- th[length(ii)+1]
+        simtmp <<- t(apply(sim, 1, scaleFbyFleet, scale=s))
+        cvfun <- function(x){
+          tcv <- catch(x,nm=nm,cw=cw)
+          cv <- attr(tcv,"byFleet")
+          return(cv)
+        }
+        simcat <- apply(simtmp, 1, cvfun)
+        medcv <- apply(simcat,1,estimate)
+        med <- c(medcv/sum(medcv),medcv,estimate(apply(simcat,2,sum)))
+        return(sum(((cfcvtcv-med)/cfcvtcv)^2, na.rm=TRUE))
+      }
+      ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      sim <- simtmp
+    }
+
+    if(any(!is.na(cf.cv.keep.fv[i+1,]))){
+      cfcv <- cf.cv.keep.fv[i+1,]  
+      cf <- cfcv[1:noCatchFleets]
+      cv <- cfcv[1:noCatchFleets+noCatchFleets]
+      cfcvtfv<-c(cfcv,fval[i+1])
+      ii <- which(apply(rbind(cv,cf),2,function(x)any(!is.na(x))))
+      theta <- rep(1,length(ii)+1)
+      if(length(theta)>noCatchFleets)stop("Over-specified in cf.cv.keep.fv")
+      lsfun <- function(th){
+        s <- rep(NA,noCatchFleets)
+        s[ii] <- th[1:length(ii)]
+        s[-ii] <- th[length(ii)+1]
+        simtmp <<- t(apply(sim, 1, scaleFbyFleet, scale=s))
+        cvfun <- function(x){
+          tcv <- catch(x,nm=nm,cw=cw)
+          cv <- attr(tcv,"byFleet")
+          return(cv)
+        }
+        simcat <- apply(simtmp, 1, cvfun)
+        simfbar <- apply(simtmp, 1, fbar)
+        medcv <- apply(simcat,1,estimate)
+        med <- c((medcv-cf.keep.fv.offset[i+1,])/sum(medcv),medcv,estimate(simfbar))
+        return(sum(((cfcvtfv-med)/cfcvtfv)^2, na.rm=TRUE))
+      }
+      ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      sim <- simtmp
+    }
+    
+    fbarsim <- apply(sim, 1, fbar)
+    catchsim <- apply(sim, 1, catch, nm=nm, cw=cw)
+    ssbsim <- apply(sim, 1, ssb, nm=nm, sw=sw, mo=mo, pm=pm, pf=pf)
+    recsim <- exp(sim[,1])
+    catchbysim <- apply(sim, 1, function(x)attr(catch(x, nm=nm, cw=cw), "byFleet"))
+    simlist[[i+1]] <- list(sim=sim, fbar=fbarsim, catch=catchsim, ssb=ssbsim, rec=recsim, year=y, catchby=catchbysim)
+  }
+  attr(simlist, "fit")<-fit
+
+  collect <- function(x){
+    quan <- quantile(x, c(.50,.025,.975))
+    c(Estimate=estimate(x), low=quan[2], high=quan[3])
+  }
+  fbar <- round(do.call(rbind, lapply(simlist, function(xx)collect(xx$fbar))),3)
+  rec <- round(do.call(rbind, lapply(simlist, function(xx)collect(xx$rec))))
+  ssb <- round(do.call(rbind, lapply(simlist, function(xx)collect(xx$ssb))))
+  catch <- round(do.call(rbind, lapply(simlist, function(xx)collect(xx$catch))))
+  if(sum(fit$data$fleetTypes==0)==1){
+    catchby <- catch
+  }else{
+    catchby <- round(do.call(rbind, lapply(simlist,function(xx)as.vector(apply(xx$catchby,1,collect)))))
+  }
+  tab <- cbind(fbar, rec, ssb, catch)
+  rownames(tab) <- unlist(lapply(simlist, function(xx)xx$year))
+  rownames(catchby) <- rownames(tab)
+  nam <- c("Estimate","low","high")
+  colnames(tab) <- paste0(rep(c("fbar:","rec:","ssb:","catch:"), each=length(nam)), nam)
+  colnames(catchby) <- paste0(rep(paste0("F",1:sum(fit$data$fleetTypes==0),":"), each=length(nam)), nam)
+  attr(simlist, "tab") <- tab
+  attr(simlist, "catchby") <- catchby
+  shorttab <- t(tab[,grep("Estimate",colnames(tab))])
+  rownames(shorttab) <- sub(":Estimate","",paste0(label,if(!is.null(label))":",rownames(shorttab)))
+  attr(simlist, "shorttab") <- shorttab
+  attr(simlist, "label") <- label  
+  class(simlist) <- "samforecast"
+  simlist
+}
