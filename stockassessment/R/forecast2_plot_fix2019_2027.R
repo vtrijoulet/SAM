@@ -3,6 +3,7 @@
 
 library(stockassessment)
 library(Matrix)
+library(gridExtra)
 fit<- fitfromweb("WBSS_HAWG_2018")
 source("stockassessment/R/forecast2.R")
 
@@ -236,27 +237,31 @@ pdf(file = paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,".pdf"), width = 12, heigh
 
   par(mfrow=c(ceiling(length(FC)/2),2))
   for (k in 1:length(FC)){
-    fbarplot(FC[[k]], main=paste0("Fscenario=",k))
+    if (k==1) main="Base scenario" else main=paste0("Fscenario=",k-1)
+    fbarplot(FC[[k]], main=main)
     abline(h=Fmsy,col="red",lty=2)
     abline(h=Flow,col="blue",lty=2)
   }
-  plot.new()
+  #plot.new()
   for (k in 1:length(FC)){
-    ssbplot(FC[[k]], main=paste0("Fscenario=",k))
+    if (k==1) main="Base scenario" else main=paste0("Fscenario=",k-1)
+    ssbplot(FC[[k]], main=main)
     abline(h=MSYBtrig,col="red",lty=2)
     abline(h=Blim,col="blue",lty=2)
     
   }
-  plot.new()
+  #plot.new()
   for (k in 1:length(FC)){
-    catchplot(FC[[k]], main=paste0("Fscenario=",k))
+    if (k==1) main="Base scenario" else main=paste0("Fscenario=",k-1)
+    catchplot(FC[[k]], main=main)
   }
-  plot.new()
+  #plot.new()
   for (k in 1:length(FC)){
-    recplot(FC[[k]], main=paste0("Fscenario=",k))
+    if (k==1) main="Base scenario" else main=paste0("Fscenario=",k-1)
+    recplot(FC[[k]], main=main)
   }
   
-  plot.new()
+  #plot.new()
   par(mfrow=c(2,ceiling((length(FC[[1]])-(t1-1))/2)),oma=c(4,4,2,1),mar=c(0,0,0,0))
   for (t in t1:length(FC[[1]])){
     plot(x=risk.val[1,,t],y=risk.val[2,,t],pch=1:5,xlim=c(0,1),ylim=c(0,max(risk.val[2,,])*1.1),xaxt="n",yaxt="n")
@@ -272,7 +277,8 @@ pdf(file = paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,".pdf"), width = 12, heigh
   par(mfrow=c(1,1))
   for (k in 1:length(FC)){
     plot.new()
-    text(x=0.5,y=1,labels=paste0("Catch by fleet Fscenario=",k), cex=2)
+    if (k==1) label="Catch by fleet base scenario" else label=paste0("Catch by fleet Fscenario=",k)
+    text(x=0.5,y=1,labels=label, cex=2)
     # FC.table<-array(dim=c(length(FC[[1]]),12))
     # FC.table[]<-FC[[k]]
     # grid.table(FC.table)
