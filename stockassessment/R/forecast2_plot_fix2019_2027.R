@@ -4,12 +4,13 @@
 library(stockassessment)
 library(Matrix)
 fit<- fitfromweb("WBSS_HAWG_2018")
+source("stockassessment/R/forecast2.R")
 
 Blim=120000
 MSYBtrig=150000
 Fmsy=0.31 # MSY=0.31, MAP_lower=0.216, MAP_upper=0.379 for Blim=120000 and MSYBtrig=150000 (2018 WBSS Advice)
 Flow=0.1
-
+RW=TRUE
 
 
 FC <- list()
@@ -39,7 +40,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                 #MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                                 #Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                                 Fmsy=Fmsy,
-                                Flow=Flow#, #for Fscenario= 3, 4 or 5
+                                Flow=Flow, #for Fscenario= 3, 4 or 5
+                                RW=RW
                                 #util=util2 # for implementation error runs
                                 #util_prop=c(1,0.54,0.46,1)
 )   
@@ -67,7 +69,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                                Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                                Fmsy=Fmsy,
-                               Flow=Flow#, #for Fscenario= 3, 4 or 5
+                               Flow=Flow, #for Fscenario= 3, 4 or 5
+                               RW=RW
                                #util=util2 # for implementation error runs
                                #util_prop=c(1,0.54,0.46,1)
                )     
@@ -92,7 +95,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                  Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                  Fmsy=Fmsy,
-                 Flow=Flow#, #for Fscenario= 3, 4 or 5
+                 Flow=Flow, #for Fscenario= 3, 4 or 5
+                 RW=RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -117,7 +121,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                  Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                  Fmsy=Fmsy,
-                 Flow=Flow#, #for Fscenario= 3, 4 or 5
+                 Flow=Flow, #for Fscenario= 3, 4 or 5
+                 RW=RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -143,7 +148,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                  Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                  Fmsy=Fmsy,
-                 Flow=Flow#, #for Fscenario= 3, 4 or 5
+                 Flow=Flow, #for Fscenario= 3, 4 or 5
+                 RW=RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -167,7 +173,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                 MSYBtrig=c(NA, NA, NA, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig, MSYBtrig), 
                                 Blim=c(NA, NA, NA, Blim, Blim, Blim, Blim, Blim, Blim, Blim, Blim),
                                 Fmsy=Fmsy,
-                                Flow=Flow#, #for Fscenario= 3, 4 or 5
+                                Flow=Flow, #for Fscenario= 3, 4 or 5
+                                RW=RW
                                 #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                                 #util_prop=c(1,0.54,0.46,1)
 )     
@@ -205,7 +212,7 @@ t1=4 # year number where MSE starts for probability SSB<Blim plot
 
 setwd("~/DTU/HAWG/Forecast/MSE")
 
-pdf(file = paste0("MSE_forecast_Fmsy=",Fmsy,".pdf"), width = 12, height = 12 )
+pdf(file = paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,".pdf"), width = 12, height = 12 )
 
   plot(x=c(0,MSYBtrig,MSYBtrig*2), y=c(0,Fmsy,Fmsy), type="l", xlab="SSB", ylab="F", ylim=c(0,Fmsy*1.1), main="F scenarios",lwd=2)
   segments(x0=MSYBtrig, y0 = 0, x1=MSYBtrig, y1=Fmsy, lty=2, col="grey")
