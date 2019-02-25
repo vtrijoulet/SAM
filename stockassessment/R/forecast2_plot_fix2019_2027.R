@@ -11,7 +11,7 @@ Blim=120000
 MSYBtrig=150000
 Fmsy=0.31 # MSY=0.31, MAP_lower=0.216, MAP_upper=0.379 for Blim=120000 and MSYBtrig=150000 (2018 WBSS Advice)
 Flow=0.1
-RW=TRUE
+RW=FALSE
 
 
 FC <- list()
@@ -264,9 +264,9 @@ pdf(file = paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,".pdf"), width = 12, heigh
   #plot.new()
   par(mfrow=c(2,ceiling((length(FC[[1]])-(t1-1))/2)),oma=c(4,4,2,1),mar=c(0,0,0,0))
   for (t in t1:length(FC[[1]])){
-    plot(x=risk.val[1,,t],y=risk.val[2,,t],pch=1:5,xlim=c(0,1),ylim=c(0,max(risk.val[2,,])*1.1),xaxt="n",yaxt="n")
+    plot(x=risk.val[1,,t],y=risk.val[2,,t],pch=1:(length(FC)),xlim=c(0,1),ylim=c(0,max(risk.val[2,,])*1.1),xaxt="n",yaxt="n")
     text(x=0.5,y=max(risk.val[2,,]),labels = years[t],cex=2)
-    if(t==t1) legend("topleft",legend=1:5,pch=1:5,bty="n")
+    if(t==t1) legend("topleft",legend=0:(length(FC)-1),pch=1:(length(FC)),bty="n")
     if(t==t1) axis(2)
     if(t==t1+ceiling((length(FC[[1]])-(t1-1))/2)) axis(2)
     if(t>=t1+ceiling((length(FC[[1]])-(t1-1))/2)) axis(1)
