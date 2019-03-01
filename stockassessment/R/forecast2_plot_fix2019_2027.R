@@ -21,7 +21,7 @@ cf.cv.keep.cv<-matrix(NA,ncol=4*2,nrow=11)
 cf.cv.keep.cv[2,] <- c(NA,NA,NA,NA,NA,18272,1215,17309)
 cf.cv.keep.cv[3,] <- c(NA,NA,NA,NA,NA,11085,1225,9001)
 for (i in 4:nrow(cf.cv.keep.cv)){
-  cf.cv.keep.cv[i,] <- cf.cv.keep.cv[3,] 
+  cf.cv.keep.cv[i,] <- cf.cv.keep.cv[3,]  
 }
 # util2=matrix(c(1,0.54,0.46,1), nrow=sum(fit$data$fleetTypes==0), ncol=8, byrow=FALSE)
 # util2[,1:2]<-1
