@@ -45,7 +45,7 @@ rmvnorm <- function(n = 1, mu, Sigma){
 ##' @importFrom stats median uniroot quantile
 ##' @importFrom Matrix bdiag
 ##' @export
-forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, util=matrix(1,nrow=sum(fit$data$fleetTypes==0), ncol=length(MSYBtrig)), nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, cf.cv.keep.cv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.cv.keep.fv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.keep.fv.offset=matrix(0, ncol=sum(fit$data$fleetTypes==0), nrow=length(catchval)), estimate=median, RW=FALSE, Rdist=FALSE){
+forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, util=matrix(1,nrow=sum(fit$data$fleetTypes==0), ncol=length(MSYBtrig)), nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, cf.cv.keep.cv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.cv.keep.fv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.keep.fv.offset=matrix(0, ncol=sum(fit$data$fleetTypes==0), nrow=length(catchval)), estimate=median, RW=FALSE, Rdist=FALSE, F.RW=1){
 
   idxN <- 1:nrow(fit$rep$nvar)
     
@@ -241,7 +241,8 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
     }
     ret
   }
-  procVar<-getProcessVar(fit)  
+  procVar<-getProcessVar(fit)
+  if (F.RW==0) procVar[!( (row(procVar)%in%idxN) & (col(procVar)%in%idxN))] <- 0 # F.RW=0 no RW on F, otherwise F.RW=1
   simlist<-list()
   for(i in 0:(length(fscale)-1)){ ########## For each forecast year ##############
     y<-year.base+i
