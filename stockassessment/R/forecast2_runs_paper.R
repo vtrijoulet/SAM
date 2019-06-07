@@ -16,7 +16,7 @@ seed=12345
 Fmsy=0.31 # MSY=0.31, MAP_lower=0.216, MAP_upper=0.379 for Blim=120000 and MSYBtrig=150000 (2018 WBSS Advice)
 RW=FALSE
 Rdist=FALSE
-F.RW=0
+F.RW=FALSE
 
 FC <- list()
 
