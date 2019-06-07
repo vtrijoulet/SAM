@@ -15,6 +15,7 @@ RW=FALSE
 Rdist=FALSE
 nsim=5000
 seed=12345
+F.RW=0
 
 FC <- list()
 
@@ -41,7 +42,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,0,0,0,0,0,0,0,0,0),
                                 Fmsy=Fmsy,
                                 Flow=Flow, #for Fscenario= 3, 4 or 5
                                 RW=RW,
-                                Rdist=Rdist
+                                Rdist=Rdist,
+                                F.RW=F.RW
                                 #util=util2 # for implementation error runs
                                 #util_prop=c(1,0.54,0.46,1)
 )   
@@ -76,7 +78,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                 Fmsy=Fmsy,
                                 Flow=Flow, #for Fscenario= 3, 4 or 5
                                 RW=RW,
-                                Rdist=Rdist
+                                Rdist=Rdist,
+                                F.RW=F.RW
                                 #util=util2 # for implementation error runs
                                 #util_prop=c(1,0.54,0.46,1)
 )   
@@ -105,7 +108,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                Fmsy=Fmsy,
                                Flow=Flow, #for Fscenario= 3, 4 or 5
                                RW=RW,
-                               Rdist=Rdist
+                               Rdist=Rdist,
+                               F.RW=F.RW
                                #util=util2 # for implementation error runs
                                #util_prop=c(1,0.54,0.46,1)
                )     
@@ -131,7 +135,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  Fmsy=Fmsy,
                  Flow=Flow, #for Fscenario= 3, 4 or 5
                  RW=RW,
-                 Rdist=Rdist
+                 Rdist=Rdist,
+                 F.RW=F.RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -157,7 +162,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  Fmsy=Fmsy,
                  Flow=Flow, #for Fscenario= 3, 4 or 5
                  RW=RW,
-                 Rdist=Rdist
+                 Rdist=Rdist,
+                 F.RW=F.RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -184,7 +190,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                  Fmsy=Fmsy,
                  Flow=Flow, #for Fscenario= 3, 4 or 5
                  RW=RW,
-                 Rdist=Rdist
+                 Rdist=Rdist,
+                 F.RW=F.RW
                  #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                  #util_prop=c(1,0.54,0.46,1)
 )     
@@ -209,7 +216,8 @@ FC[[length(FC)+1]] <- forecast2(fit, fscale=c(1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA),
                                 Fmsy=Fmsy,
                                 Flow=Flow, #for Fscenario= 3, 4 or 5
                                 RW=RW,
-                                Rdist=Rdist
+                                Rdist=Rdist,
+                                F.RW=F.RW
                                 #utilization=c(NA, NA, 1, 1, 1, 1), # or c(1,0.54,0.46,1) for implementation error runs
                                 #util_prop=c(1,0.54,0.46,1)
 )     
@@ -241,7 +249,7 @@ for (k in 1:length(FC)){
 
 years=2018:(2018+length(FC[[1]])-1)
 t1=3 # year number where MSE starts for probability SSB<Blim plot
-name_sim=paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,"_Rdist=", Rdist)
+name_sim=paste0("MSE_forecast_Fmsy=",Fmsy,"_RW=",RW,"_Rdist=", Rdist, "_F.RW=", F.RW)
 
 setwd("~/DTU/Manuscripts/MSE_forecast_paper/results")
 
