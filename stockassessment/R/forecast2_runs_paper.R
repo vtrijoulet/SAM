@@ -9,12 +9,13 @@ source("stockassessment/R/forecast2.R")
 
 Blim=120000
 MSYBtrig=150000
-Fmsy=0.31 # MSY=0.31, MAP_lower=0.216, MAP_upper=0.379 for Blim=120000 and MSYBtrig=150000 (2018 WBSS Advice)
 Flow=0.1
-RW=FALSE
-Rdist=FALSE
 nsim=5000
 seed=12345
+# To change between MS scenarios
+Fmsy=0.31 # MSY=0.31, MAP_lower=0.216, MAP_upper=0.379 for Blim=120000 and MSYBtrig=150000 (2018 WBSS Advice)
+RW=FALSE
+Rdist=FALSE
 F.RW=0
 
 FC <- list()
