@@ -1,27 +1,8 @@
-##' Setup minimal initial parameters
-##' @param dat sam data object
-##' @param conf configuration list  
-##' @details ...
-##' @return a list containing the following
-##' \item{logFpar}{}
-##' \item{logQpow}{}
-##' \item{logSdLogFsta}{}
-##' \item{logSdLogN}{}
-##' \item{logSdLogObs}{}
-##' \item{logSdLogTotalObs}{}
-##' \item{transfIRARdist}{}
-##' \item{sigmaObsParUS}{}
-##' \item{rec_loga}{}
-##' \item{rec_logb}{}
-##' \item{itrans_rho}{}
-##' \item{logScale}{}
-##' \item{logScaleSSB}{}
-##' \item{logPowSSB}{}
-##' \item{logSdSSB}{}
-##' \item{logitReleaseSurvival}{}
-##' \item{logitRecapturePhi}{}
-##' \item{logF}{}
-##' \item{logN}{}
+##' Setup initial values for all model parameters and random effects.
+##' @param dat sam data object as returned from the function \code{setup.sam.data}
+##' @param conf sam configuration list, which could be read from a configuration file via the \code{loadConf} function. A default/dummy configuration can be generated via the \code{defcon} function.   
+##' @details The model parameters and random effects are not initialized in any clever way - most are simply set to zero. If convergence problems occour different initial values can be tested, but it is more likely a problem with the model configuration. 
+##' @return a list containing initial values for all model parameters and random effects in the model.
 ##' @export
 defpar <- function(dat,conf){
   ret<-list()
@@ -46,7 +27,26 @@ defpar <- function(dat,conf){
                            }else{numeric(0)}
   ret$logitRecapturePhi=if(any(dat$fleetTypes==5)){numeric(length(ret$logitReleaseSurvival))
                         }else{numeric(0)}
+  
+  #ret$logW= matrix(0, nrow=max(conf$keyLogFsta)+1,ncol=dat$noYears)
+  if(conf$corFlag ==3 ){
+    ret$sepFalpha=rep(0,max(conf$keyLogFsta)+1)
+    ret$sepFlogitRho = rep(1,2)
+    ret$sepFlogSd = rep(-1,2)
+    ret$logSdLogFsta = numeric(0)
+    ret$itrans_rho = numeric(0)
+
+    if(conf$corFlag==3){
+      ret$logSdLogFsta = numeric(0)
+    }
+  }else{
+    ret$sepFalpha=numeric(0)
+    ret$sepFlogitRho = numeric(0)
+    ret$sepFlogSd = numeric(0)
+    
+  }
   ret$logF=matrix(0, nrow=max(conf$keyLogFsta)+1,ncol=dat$noYears)
   ret$logN=matrix(0, nrow=conf$maxAge-conf$minAge+1, ncol=dat$noYears)
+  
   return(ret)
 }
