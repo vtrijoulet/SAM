@@ -183,7 +183,7 @@ if(!is.even(length(FC))) plot.new()
 #par(mfrow=c(2,ceiling((length(FC[[1]])-(t1-1))/2)),oma=c(4,4,2,1),mar=c(0,0,0,0))
 #for (t in t1:length(FC[[1]])){
 t=length(FC[[1]])
-  plot(x=risk.val[1,,t],y=risk.val[2,,t],pch=1:(length(FC)),xlim=c(0,1),ylim=c(0,max(risk.val[2,,])*1.1),xaxt="n",yaxt="n", col=1:1:ncol(risk.val))
+  plot(x=risk.val[1,,t],y=risk.val[2,,t],pch=1:(length(FC)),xlim=c(0,1),ylim=c(0,max(risk.val[2,,])*1.1),xaxt="n",yaxt="n", col=1:ncol(risk.val))
   text(x=0.5,y=max(risk.val[2,,]),labels = years[t],cex=2)
   legend("topleft",legend=legend,pch=1:(length(FC)) ,bty="n", col=1:ncol(risk.val))
   axis(2)
