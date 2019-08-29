@@ -40,10 +40,9 @@ vector<Type> predNFun(dataSet<Type> &dat, confSet &conf, paraSet<Type> &par, arr
     }else{
       predN(j)=logN(j-1,i-1)-dat.natMor(i-1,j-1); 
     }
-  }  
-  if(conf.maxAgePlusGroup==1){
-    predN(stateDimN-1)=log(exp(logN(stateDimN-2,i-1)-exp(logF(conf.keyLogFsta(0,stateDimN-2),i-1))-dat.natMor(i-1,stateDimN-2))+
-                           exp(logN(stateDimN-1,i-1)-exp(logF(conf.keyLogFsta(0,stateDimN-1),i-1))-dat.natMor(i-1,stateDimN-1))); 
   }
+  predN(stateDimN-1)=log(exp(logN(stateDimN-2,i-1)-exp(logF(conf.keyLogFsta(0,stateDimN-2),i-1))-dat.natMor(i-1,stateDimN-2))+
+                         exp(logN(stateDimN-1,i-1)-exp(logF(conf.keyLogFsta(0,stateDimN-1),i-1))-dat.natMor(i-1,stateDimN-1))); 
   return predN;  
 }
+
