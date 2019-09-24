@@ -24,11 +24,18 @@ rmvnorm <- function(n = 1, mu, Sigma){
   }
 }
 
-##' forecast function to do shortterm
+##' @title Forecast function with annual management strategies
+##' @description Forecast function modified from the original function (forecast()) by adding the options of annual management strategies. 
+##' @description The management strategies include 5 HCRs (Fscenario) and 3 recruitment options (sampled in year interval (default), lognormally distributed given mean of year interval (Rdist) or random walk (RW)). Different Ftargets and reference points can be set up to parameterize the HCRs (see Fmsy, Flow, Blim, MSYBtrig).
 ##' @param fit an assessment object of type sam, as returned from the function sam.fit
 ##' @param fscale a vector of f-scales. See details.  
 ##' @param catchval a vector of target catches. See details.   
-##' @param fval a vector of target f values. See details.  
+##' @param fval a vector of target f values. See details.
+##' @param MSYBtrig a vector of MSYBtrigger values of length the number of years in the forecast. Used to inform asymptote of the HCRs.
+##' @param Blim a vector of Blim values  of length the number of years in the forecast. Used in the HCRs.
+##' @param Fmsy a scalar giving the value of FMSY or a Ftarget that is kept constant when SSB>MSYBtrigger in the HCRs.
+##' @param Fscenario a scalar between 1 and 5 informing the shape of the HCR. See details.
+##' @param Flow a scalar giving the minimum F used when Fscenario=3, 4 and 5.  
 ##' @param nosim number of simulations default is 1000
 ##' @param year.base starting year default last year in assessment. Currently it is only supported to use last assessment year or the year before  
 ##' @param ave.years vector of years to average for weights, maturity, M and such  
@@ -40,7 +47,21 @@ rmvnorm <- function(n = 1, mu, Sigma){
 ##' @param cf.cv.keep.fv exotic option
 ##' @param cf.keep.fv.offset exotic option
 ##' @param estimate the summary function used (typically mean or median) 
-##' @details There are three ways to specify a scenario. If e.g. four F values are specified (e.g. fval=c(.1,.2,.3,4)), then the first value is used in the last assessment year (base.year), and the three following in the three following years. Alternatively F's can be specified by a scale, or a target catch. Only one option can be used per year. So for instance to set a catch in the first year and an F-scale in the following one would write catchval=c(10000,NA,NA,NA), fscale=c(NA,1,1,1). The length of the vector specifies how many years forward the scenarios run. 
+##' @param RW if TRUE recruitment in the forecast follows random walk 
+##' @param Rdist if TRUE recruitment follows a Normal distribution on the log scale with mean the mean of recruitment in rec.years and variance the variance of recruitment in rec.years
+##' @param F.RW if TRUE F follows a random walk in the forecast
+##' @details There are four ways to specify a scenario. If e.g. four F values are specified (e.g. fval=c(.1,.2,.3,4)), then the first value is used in the last assessment year (base.year), and the three following in the three following years. Alternatively F's can be specified by a scale, or a target catch. Only one option can be used per year. So for instance to set a catch in the first year and an F-scale in the following one would write catchval=c(10000,NA,NA,NA), fscale=c(NA,1,1,1). The length of the vector specifies how many years forward the scenarios run.
+##' @details The HCRs have 5 shapes depending on the Fscenario. All HCRs present an asymptote at Fmsy when SSB>= MSYBtrig. All HCRs except Fscenario=5 have F decreasing linearly from Fmsy to Flim between MSYBtrig and Blim. 
+##' 
+##' Fscenario=1 is the MSY approach where F=0 when SSB<Blim. 
+##' 
+##' Fscenario=2 is a simple hockey-stick shape where F decreases linearly from Fmsy to 0 below MSYBtrig. 
+##' 
+##' Fscenario=3 is the scenario where F=Flow when SSB<Blim. 
+##' 
+##' Fscenario=4 has the same shape than Fscenario=2 except that F cannot decrease below Flow. 
+##' 
+##' Fscenario=5 is the case where F=Flow when SSB<Blim but when Blim<SSB<MSYBtrig F decreases from Fmsy to Flow linearly.  
 ##' @return an object of type samforecast
 ##' @importFrom stats median uniroot quantile
 ##' @importFrom Matrix bdiag
