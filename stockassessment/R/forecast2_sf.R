@@ -70,7 +70,7 @@ rmvnorm <- function(n = 1, mu, Sigma){
 ##' @return an object of type samforecast
 ##' @importFrom stats median uniroot quantile
 ##' @export
-forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, nextssb=NULL, landval=NULL, cwF=NULL, nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, customWeights=NULL, customSel=NULL, lagR=FALSE, splitLD=FALSE, addTSB=FALSE, RW=FALSE, Rdist=FALSE, F.RW=TRUE){
+forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, nextssb=NULL, landval=NULL, cwF=NULL, nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, customWeights=NULL, customSel=NULL, lagR=FALSE, splitLD=FALSE, addTSB=FALSE, RW=FALSE, Rdist=FALSE, SR=FALSE, SRpar=NULL, F.RW=TRUE){
     
   resample <- function(x, ...){
     if(deterministic){
@@ -108,9 +108,10 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
   
   if(!missing(Fscenario)) if (!Fscenario%in%1:5) stop("Fscenario does not exist")
   
-  if(RW==TRUE & Rdist==TRUE) stop("Cannot specify RW and Rdist at the same time") # either rec=RW or rec=random given distribution
+  if(sum(RW==TRUE,Rdist==TRUE,SR==TRUE)>1) stop("Cannot specify RW, Rdist or SR at the same time") # either rec=RW or rec=random given distribution or rec=SRR
   
-  
+  if(SR==TRUE & missing(SRpar)) stop("Need to specific SR parameters (SRpar) if SR=TRUE")
+
 
   if(!is.null(overwriteSelYears)){
     fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)  
@@ -205,19 +206,26 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
     if (F.RW==TRUE) cov[nN+1:nF,nN+1:nF] <- (sdF%*%t(sdF))*corr else cov[nN+1:nF,nN+1:nF] <- 0 # F.RW=FALSE means no RW on F, TRUE by default
     cov
   }
-    
+  
+ 
   step <- function(x, nm, recpool, scale, inyear=FALSE){
     F <- getF(x, allowSelOverwrite=!inyear)
     N <- getN(x)
     if(!inyear){
+      ssb_last <-simlist[[i]]$ssb[numsim]
       Z <- F+nm
       n <- length(N)
       if(RW) N <- c(exp(log(N[1])+rnorm(1,mean=0,sd=exp(fit$pl$logSdLogN[1]))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
       else if (Rdist) N <- c(exp(rnorm(1,mean=mean(log(recpool)),sd=sd(log(recpool)))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      else if (SR) {
+        if (ssb_last < exp(SRpar[1])) N <- c(exp(log((exp(SRpar[2])/exp(SRpar[1]))*ssb_last)+rnorm(1,mean=0, sd=SRpar[3])) ,N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+        else N <- c(exp(SRpar[2]+rnorm(1,mean=0, sd=SRpar[3])) ,N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      }
       else N <- c(resample(recpool,1),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
     }
     F <- F*scale
     xx <- getState(N,F)
+    numsim <<- numsim+1
     return(xx)
   }
     
@@ -321,7 +329,8 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
     lw<-getThisOrAve(fit$data$landMeanWeight, y, ave.lw)
     pm<-getThisOrAve(fit$data$propM, y, ave.pm)
     pf<-getThisOrAve(fit$data$propF, y, ave.pf)
-
+    
+    numsim=1
     sim <- t(apply(sim, 1, function(s)step(s, nm=nm, recpool=recpool, scale=1, inyear=(i==0))))
     if(i!=0){
       if(deterministic){procVar<-procVar*0}
@@ -329,6 +338,7 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
       if(!is.null(customSel)){nn<-length(fit$conf$keyLogFsta[1,]); procVar[-c(1:nn),-c(1:nn)] <- 0}
       sim <- sim + rmvnorm(nosim, mu=rep(0,nrow(procVar)), Sigma=procVar)
     }
+    
     
     if(!is.na(fscale[i+1])){
       sim<-t(apply(sim, 1, scaleF, scale=fscale[i+1]))    
@@ -430,7 +440,7 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
       ff <- uniroot(fun, c(0,100))$root
       sim <- simtmp
     }
-
+    
     if(!is.na(nextssb[i+1])){
       if((sum(pm)!=0) | (sum(pf)!=0))stop("nextssb option only available if SSB is calculated in the beginning of the year")  
       simtmp<-NA
