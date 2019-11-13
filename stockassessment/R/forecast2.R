@@ -66,7 +66,7 @@ rmvnorm <- function(n = 1, mu, Sigma){
 ##' @importFrom stats median uniroot quantile
 ##' @importFrom Matrix bdiag
 ##' @export
-forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, util=matrix(1,nrow=sum(fit$data$fleetTypes==0), ncol=length(MSYBtrig)), nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, cf.cv.keep.cv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.cv.keep.fv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.keep.fv.offset=matrix(0, ncol=sum(fit$data$fleetTypes==0), nrow=length(catchval)), estimate=median, RW=FALSE, Rdist=FALSE, F.RW=TRUE){
+forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, util=matrix(1,nrow=sum(fit$data$fleetTypes==0), ncol=length(MSYBtrig)), nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, cf.cv.keep.cv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.cv.keep.fv=matrix(NA, ncol=2*sum(fit$data$fleetTypes==0), nrow=length(catchval)), cf.keep.fv.offset=matrix(0, ncol=sum(fit$data$fleetTypes==0), nrow=length(catchval)), estimate=median, RW=FALSE, Rdist=FALSE, SR=FALSE, SRpar=NULL, F.RW=TRUE){
 
   idxN <- 1:nrow(fit$rep$nvar)
     
@@ -111,8 +111,10 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
   
   if(!missing(Fscenario)) if (!Fscenario%in%1:5) stop("Fscenario does not exist")
   
-  if(RW==TRUE & Rdist==TRUE) stop("Cannot specify RW and Rdist at the same time") # either rec=RW or rec=random given distribution
-
+  if(sum(RW==TRUE,Rdist==TRUE,SR==TRUE)>1) stop("Cannot specify RW, Rdist or SR at the same time") # either rec=RW or rec=random given distribution or rec=SRR
+  
+  if(SR==TRUE & missing(SRpar)) stop("Need to specific SR parameters (SRpar) if SR=TRUE")
+  
 
   if(!is.null(overwriteSelYears)){
     fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)  
@@ -164,15 +166,21 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
     F <- getF(x)
     N <- getN(x)
     if(!inyear){
+      ssb_last <-simlist[[i]]$ssb[numsim]
       Z <- F+nm
       n <- length(N)
       if(RW) N <- c(exp(log(N[1])+rnorm(1,mean=0,sd=exp(fit$pl$logSdLogN[1]))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
       else if (Rdist) N <- c(exp(rnorm(1,mean=mean(log(recpool)),sd=sd(log(recpool)))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
-        else N <- c(resample(recpool,1),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      else if (SR) {
+        if (ssb_last < exp(SRpar[1])) N <- c(exp(log((exp(SRpar[2])/exp(SRpar[1]))*ssb_last)+rnorm(1,mean=0, sd=SRpar[3])) ,N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+        else N <- c(exp(SRpar[2]+rnorm(1,mean=0, sd=SRpar[3])) ,N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      }
+      else N <- c(resample(recpool,1),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
     }
     xx <- rep(NA,length=length(x))
     xx[idxN] <- log(N)
     xx[idxF] <- x[idxF]+log(scale)
+    numsim <<- numsim+1
     return(xx)
   }
 
@@ -276,7 +284,8 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
     lw<-getThisOrAve(fit$data$landMeanWeight, y, ave.lw)
     pm<-getThisOrAve(fit$data$propM, y, ave.pm)
     pf<-getThisOrAve(fit$data$propF, y, ave.pf)
-
+    
+    numsim=1
     sim <- t(apply(sim, 1, function(s)step(s, nm=nm, recpool=recpool, scale=1, inyear=(i==0))))
     if(i!=0){
       if(deterministic)procVar<-procVar*0  
