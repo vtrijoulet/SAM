@@ -1,12 +1,19 @@
 
-HS_fit <- function(name, rec.years=NULL){
+HS_fit <- function(name, pair.years=NULL){
 
   fit=fitfromweb(name,character.only=TRUE)
-  if (missing(rec.years)) rec.years=1:fit$data$noYears else rec.years=which(fit$data$years%in%rec.years) # choose SR pairs
+  if (missing(pair.years)) pair.years=1:fit$data$noYears else pair.years=which(fit$data$years%in%pair.years) # choose SR pairs
 
-  y=rectable(fit)[rec.years[-1],1]
-  x=ssbtable(fit)[rec.years[-length(rec.years)],1]
-
+  lag <- fit$conf$minAge
+  
+  if (lag>0) {
+    y=rectable(fit)[pair.years[-(1:lag)],1]
+    x=ssbtable(fit)[pair.years[-((length(pair.years)-(lag-1)):length(pair.years))],1]
+  } else {
+    y=rectable(fit)[pair.years,1]
+    x=ssbtable(fit)[pair.years,1]
+  }
+  
   fn <- function(par){
     i <- (x < exp(par[1]))
     slope <- exp(par[2]) / exp(par[1])
@@ -62,7 +69,7 @@ HS_fit <- function(name, rec.years=NULL){
 #   #if ((exp(par[1])/exp(par[2]))<=min(ssb)) nll=nll+1e10*(min(ssb)-(exp(par[1])/exp(par[2])))^2
 #   return(nll)
 # }
-# opt <- optim(par = c(log(max(rectable(fit)[rec.years[-1],1])), log(10))*1, ssb=ssbtable(fit)[rec.years[-length(rec.years)],1], rec=rectable(fit)[rec.years[-1],1], fn=fn1, control =list(reltol=1e-40, maxit=1000) )
+# opt <- optim(par = c(log(max(rectable(fit)[pair.years[-1],1])), log(10))*1, ssb=ssbtable(fit)[pair.years[-length(pair.years)],1], rec=rectable(fit)[pair.years[-1],1], fn=fn1, control =list(reltol=1e-40, maxit=1000) )
 # exp(opt$par)
 # plot(y=rec, x=ssb, pch=16, type="o", xlim=c(0,max(ssbtable(fit)[-fit$data$noYears,1])))
 # pred.rec=exp(opt$par[2])*seq(0,300000,100)
