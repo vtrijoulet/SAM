@@ -70,7 +70,7 @@ rmvnorm <- function(n = 1, mu, Sigma){
 ##' @return an object of type samforecast
 ##' @importFrom stats median uniroot quantile
 ##' @export
-forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, nextssb=NULL, landval=NULL, cwF=NULL, nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, customWeights=NULL, customSel=NULL, lagR=FALSE, splitLD=FALSE, addTSB=FALSE, RW=FALSE, Rdist=FALSE, SR=FALSE, SRpar=NULL, F.RW=TRUE){
+forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval=NULL, MSYBtrig=NULL, Blim=NULL, Fmsy=NULL, Fscenario=NULL, Flow=NULL, nextssb=NULL, landval=NULL, cwF=NULL, nosim=1000, year.base=max(fit$data$years), ave.years=max(fit$data$years)+(-4:0), rec.years=max(fit$data$years)+(-9:0), label=NULL, overwriteSelYears=NULL, deterministic=FALSE, customWeights=NULL, customSel=NULL, lagR=FALSE, splitLD=FALSE, addTSB=FALSE, RW=FALSE, drift=NULL, Rdist=FALSE, SR=FALSE, SRpar=NULL, F.RW=TRUE){
     
   resample <- function(x, ...){
     if(deterministic){
@@ -112,6 +112,8 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
   
   if(SR==TRUE & missing(SRpar)) stop("Need to specific SR parameters (SRpar) if SR=TRUE")
 
+  if(!missing(drift) & RW==FALSE) stop("Cannot use drift if RW is FALSE")
+  
 
   if(!is.null(overwriteSelYears)){
     fromto <- fit$conf$fbarRange-(fit$conf$minAge-1)  
@@ -215,7 +217,11 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, catchval.exact=NULL, fval
       ssb_last <-simlist[[i]]$ssb[numsim]
       Z <- F+nm
       n <- length(N)
-      if(RW) N <- c(exp(log(N[1])+rnorm(1,mean=0,sd=exp(fit$pl$logSdLogN[1]))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      if(RW) if (is.null(drift)){
+        N <- c(exp(log(N[1])+rnorm(1,mean=0,sd=exp(fit$pl$logSdLogN[1]))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      } else {
+        N <- c(exp(log(N[1])+rnorm(1,mean=-drift*exp(fit$pl$logSdLogN[1]),sd=exp(fit$pl$logSdLogN[1]))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
+      }
       else if (Rdist) N <- c(exp(rnorm(1,mean=mean(log(recpool)),sd=sd(log(recpool)))),N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
       else if (SR) {
         if (ssb_last < exp(SRpar[1])) N <- c(exp(log((exp(SRpar[2])/exp(SRpar[1]))*ssb_last)+rnorm(1,mean=0, sd=SRpar[3])) ,N[-n]*exp(-Z[-n])+c(rep(0,n-2),N[n]*exp(-Z[n])))
