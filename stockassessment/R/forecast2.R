@@ -373,8 +373,11 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
       ii <- which(apply(rbind(cv,cf),2,function(x)any(!is.na(x))))
       theta <- rep(1,length(ii)+1)
       if(length(theta)>noCatchFleets)stop("Over-specified in cf.cv.keep.cv")
-      lsfun <- function(th){
-        s <- rep(NA,noCatchFleets)
+      # lsfun <- function(th){
+      #   s <- rep(NA,noCatchFleets)
+      lsfun <- function(logth) {
+        th<-exp(logth)
+        s <- rep(NA, noCatchFleets)
         s[ii] <- th[1:length(ii)]
         s[-ii] <- th[length(ii)+1]
         simtmp <<- t(apply(sim, 1, scaleFbyFleet, scale=s))
@@ -386,9 +389,11 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
         simcat <- apply(simtmp, 1, cvfun)
         medcv <- apply(simcat,1,estimate)
         med <- c(medcv/sum(medcv),medcv,estimate(apply(simcat,2,sum)))
-        return(sum(((cfcvtcv-med)/cfcvtcv)^2, na.rm=TRUE))
+        #return(sum(((cfcvtcv-med)/cfcvtcv)^2, na.rm=TRUE))
+        return(-sum(dnorm(log(cfcvtcv), log(med), sd=1 ,log=TRUE), na.rm = TRUE))
       }
-      ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      #ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      ff <- nlminb(log(theta),lsfun)
       sim <- simtmp
     }
 
@@ -396,12 +401,15 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
       cfcv <- cf.cv.keep.fv[i+1,]  
       cf <- cfcv[1:noCatchFleets]
       cv <- cfcv[1:noCatchFleets+noCatchFleets]
-      cfcvtfv<-c(cfcv,fval[i+1])
+      cfcvtfv<-c(cfcv,estimate(apply(sim, 1, fbar)))
       ii <- which(apply(rbind(cv,cf),2,function(x)any(!is.na(x))))
       theta <- rep(1,length(ii)+1)
       if(length(theta)>noCatchFleets)stop("Over-specified in cf.cv.keep.fv")
-      lsfun <- function(th){
-        s <- rep(NA,noCatchFleets)
+      # lsfun <- function(th){
+      #   s <- rep(NA,noCatchFleets)
+      lsfun <- function(logth) {
+        th<-exp(logth)
+        s <- rep(NA, noCatchFleets)
         s[ii] <- th[1:length(ii)]
         s[-ii] <- th[length(ii)+1]
         simtmp <<- t(apply(sim, 1, scaleFbyFleet, scale=s))
@@ -414,9 +422,11 @@ forecast2 <- function(fit, fscale=NULL, catchval=NULL, fval=NULL, MSYBtrig=NULL,
         simfbar <- apply(simtmp, 1, fbar)
         medcv <- apply(simcat,1,estimate)
         med <- c((medcv-cf.keep.fv.offset[i+1,])/sum(medcv),medcv,estimate(simfbar))
-        return(sum(((cfcvtfv-med)/cfcvtfv)^2, na.rm=TRUE))
+        #return(sum(((cfcvtfv-med)/cfcvtfv)^2, na.rm=TRUE))
+        return(-sum(dnorm(log(cfcvtfv), log(med), sd=1 ,log=TRUE), na.rm = TRUE))
       }
-      ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      #ff <- nlminb(theta,lsfun, lower=0.001, upper=1000)
+      ff <- nlminb(log(theta),lsfun)
       sim <- simtmp
     }
     
