@@ -24,7 +24,14 @@ HS_fit <- function(name, pair.years=NULL){
   # Get close to global optimum
   par = unlist(gr[which.min(m),]) # par are x,y coordinates for inflexion point
   # Find the exact global optimum
-  opt <- optim(par, fn)
+  opt <- optim(par, fn, hessian=TRUE)
+  
+  # inverse_hessian<-solve(opt$hessian)
+  # sigma<-sqrt(diag(inverse_hessian))
+  # natural_sigma <- exp(opt$par)*sigma
+  # natural_cv <- round(natural_sigma/exp(opt$par),3)
+  #upper<-opt$par+1.96*prop_sigma
+  #lower<-opt$par-1.96*prop_sigma
 
 
   log.pred.y <- y
